@@ -19,7 +19,7 @@ import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { CATEGORY_LIST } from '../constants/categories'
-import { QuickAddModal } from '../components/layout/QuickAddModal'
+import { useEntries } from '../context/useEntries'
 import type { CategoryId } from '../types'
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -39,8 +39,7 @@ const iconMap: Record<string, React.ReactNode> = {
 
 export const ExplorePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('')
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [selectedCategory, setSelectedCategory] = useState<CategoryId | null>(null)
+  const { stats, openCreateModal } = useEntries()
 
   const filteredCategories = CATEGORY_LIST.filter(
     (cat) =>
@@ -49,8 +48,7 @@ export const ExplorePage: React.FC = () => {
   )
 
   const handleCategorySelect = (id: CategoryId) => {
-    setSelectedCategory(id)
-    setIsAddModalOpen(true)
+    openCreateModal(id)
   }
 
   return (
@@ -69,7 +67,7 @@ export const ExplorePage: React.FC = () => {
         <Button
           variant="primary"
           size="sm"
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => openCreateModal()}
           leftIcon={<Plus className="w-4 h-4" />}
         >
           New Entry
@@ -90,52 +88,49 @@ export const ExplorePage: React.FC = () => {
 
       {/* Category Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredCategories.map((category) => (
-          <Card
-            key={category.id}
-            variant="interactive"
-            onClick={() => handleCategorySelect(category.id)}
-            className="group flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105"
-                  style={{
-                    backgroundColor: category.glowColor,
-                    color: category.accentColor,
-                  }}
-                >
-                  {iconMap[category.iconName] || <Sparkles className="w-5 h-5" />}
+        {filteredCategories.map((category) => {
+          const entryCount = stats.categoryCounts[category.id] || 0
+          return (
+            <Card
+              key={category.id}
+              variant="interactive"
+              onClick={() => handleCategorySelect(category.id)}
+              className="group flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105"
+                    style={{
+                      backgroundColor: category.glowColor,
+                      color: category.accentColor,
+                    }}
+                  >
+                    {iconMap[category.iconName] || <Sparkles className="w-5 h-5" />}
+                  </div>
+                  <Badge variant={entryCount > 0 ? 'purple' : 'outline'} size="sm">
+                    {entryCount} {entryCount === 1 ? 'Entry' : 'Entries'}
+                  </Badge>
                 </div>
-                <Badge variant="outline" size="sm">
-                  0 Entries
-                </Badge>
+
+                <h2 className="text-base font-semibold text-[#f3f4f6] font-display">
+                  {category.label}
+                </h2>
+                <p className="text-xs text-[#9da3b4] mt-1 leading-relaxed">
+                  {category.description}
+                </p>
               </div>
 
-              <h2 className="text-base font-semibold text-[#f3f4f6] font-display">
-                {category.label}
-              </h2>
-              <p className="text-xs text-[#9da3b4] mt-1 leading-relaxed">
-                {category.description}
-              </p>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs">
-              <span className="text-[#646c7f]">PRD Section 8</span>
-              <span className="text-purple-400 group-hover:text-purple-300 font-medium">
-                Record +
-              </span>
-            </div>
-          </Card>
-        ))}
+              <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs">
+                <span className="text-[#646c7f]">PRD Section 8</span>
+                <span className="text-purple-400 group-hover:text-purple-300 font-medium">
+                  Record +
+                </span>
+              </div>
+            </Card>
+          )
+        })}
       </div>
-
-      <QuickAddModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSelectCategory={selectedCategory ? undefined : undefined}
-      />
     </div>
   )
 }

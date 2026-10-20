@@ -1,16 +1,44 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Clock, Plus, Filter, ArrowUpDown } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { EmptyState } from '../components/ui/EmptyState'
+import { EntryCard } from '../components/entries/EntryCard'
 import { CATEGORY_LIST } from '../constants/categories'
-import { QuickAddModal } from '../components/layout/QuickAddModal'
+import { useEntries } from '../context/useEntries'
+import type { CategoryId } from '../types'
 
 export const TimelinePage: React.FC = () => {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const {
+    entries,
+    openCreateModal,
+    openDetailModal,
+    openEditModal,
+    openDeleteDialog,
+    toggleFavorite,
+    togglePin,
+  } = useEntries()
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
+
+  // Filter & sort active (non-archived) entries
+  const filteredEntries = useMemo(() => {
+    let result = entries.filter((e) => !e.isArchived)
+
+    if (selectedCategory !== 'all') {
+      result = result.filter((e) => e.categoryId === selectedCategory)
+    }
+
+    result.sort((a, b) => {
+      const timeA = new Date(a.eventDate).getTime()
+      const timeB = new Date(b.eventDate).getTime()
+      return sortOrder === 'newest' ? timeB - timeA : timeA - timeB
+    })
+
+    return result
+  }, [entries, selectedCategory, sortOrder])
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -37,7 +65,11 @@ export const TimelinePage: React.FC = () => {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() =>
+              openCreateModal(
+                selectedCategory !== 'all' ? (selectedCategory as CategoryId) : undefined
+              )
+            }
             leftIcon={<Plus className="w-4 h-4" />}
           >
             Add Entry
@@ -59,52 +91,75 @@ export const TimelinePage: React.FC = () => {
               : 'bg-[#171a24] text-[#9da3b4] hover:text-[#f3f4f6] border border-white/[0.06]'
           }`}
         >
-          All Entries
+          All Entries ({entries.filter((e) => !e.isArchived).length})
         </button>
-        {CATEGORY_LIST.slice(0, 8).map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => setSelectedCategory(cat.id)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition-colors cursor-pointer ${
-              selectedCategory === cat.id
-                ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30'
-                : 'bg-[#171a24] text-[#9da3b4] hover:text-[#f3f4f6] border border-white/[0.06]'
-            }`}
-          >
-            {cat.label}
-          </button>
-        ))}
+        {CATEGORY_LIST.map((cat) => {
+          const count = entries.filter((e) => !e.isArchived && e.categoryId === cat.id).length
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium shrink-0 transition-colors cursor-pointer ${
+                selectedCategory === cat.id
+                  ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30'
+                  : 'bg-[#171a24] text-[#9da3b4] hover:text-[#f3f4f6] border border-white/[0.06]'
+              }`}
+            >
+              <span>{cat.label}</span>
+              {count > 0 && <span className="ml-1.5 text-[10px] opacity-75">({count})</span>}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Timeline Stream (Empty State for Phase 1 per PRD Section 23) */}
+      {/* Timeline Stream */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <CardTitle>Timeline Stream</CardTitle>
             <Badge variant="outline" size="sm">
-              0 Events
+              {filteredEntries.length} {filteredEntries.length === 1 ? 'Frame' : 'Frames'}
             </Badge>
           </div>
           <span className="text-xs text-[#9da3b4]">
-            Filtering by: <strong className="text-[#f3f4f6]">{selectedCategory === 'all' ? 'All Categories' : selectedCategory}</strong>
+            Sorting: <strong className="text-[#f3f4f6]">{sortOrder === 'newest' ? 'Newest' : 'Oldest'}</strong>
           </span>
         </CardHeader>
         <CardContent>
-          <EmptyState
-            icon={<Clock className="w-8 h-8" />}
-            title="No timeline events found"
-            description="Your timeline brings together your movies, books, travels, projects, and personal memories in order of occurrence."
-            actionLabel="Add Timeline Entry"
-            onAction={() => setIsAddModalOpen(true)}
-            actionIcon={<Plus className="w-4 h-4" />}
-          />
+          {filteredEntries.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredEntries.map((entry) => (
+                <EntryCard
+                  key={entry.id}
+                  entry={entry}
+                  onClick={() => openDetailModal(entry)}
+                  onToggleFavorite={toggleFavorite}
+                  onTogglePin={togglePin}
+                  onEdit={openEditModal}
+                  onDelete={openDeleteDialog}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={<Clock className="w-8 h-8" />}
+              title="No timeline events found"
+              description={
+                selectedCategory === 'all'
+                  ? 'Your timeline brings together your movies, books, travels, projects, and personal memories in order of occurrence.'
+                  : `No entries recorded under ${selectedCategory}. Record your first frame in this category!`
+              }
+              actionLabel="Add Timeline Entry"
+              onAction={() =>
+                openCreateModal(
+                  selectedCategory !== 'all' ? (selectedCategory as CategoryId) : undefined
+                )
+              }
+              actionIcon={<Plus className="w-4 h-4" />}
+            />
+          )}
         </CardContent>
       </Card>
-
-      <QuickAddModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-      />
     </div>
   )
 }

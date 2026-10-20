@@ -5,7 +5,7 @@ Tracked against the 12-Phase Roadmap defined in **PRD Section 22**.
 | Phase | Description | Status | Details / Notes |
 | :--- | :--- | :--- | :--- |
 | **Phase 1** | **Project Foundation** | ✅ Completed | Vite + React + TS (strict: true), Tailwind CSS v4 design tokens, responsive layout shell (desktop sidebar & mobile bottom bar), React Router v7 routes, error boundary, design system UI components, zero lint/build errors. |
-| **Phase 2** | **Core Interface** | ⏳ Not Started | Home screen, universal entry creation form, entry detail view, editing & deletion, reusable cards/forms/empty states. |
+| **Phase 2** | **Core Interface** | ✅ Completed | Universal entry creation & editing form, entry detail view modal, delete confirmation dialog, EntryCard component, FormField/TextInput/Textarea/RatingPicker/TagInput UI suite, dynamic Home dashboard with real stats, On This Day calculation, local persistence repository, zero mock data, unit tests passing. |
 | **Phase 3** | **Local Data** | ⏳ Not Started | IndexedDB persistence, schema versioning & migrations, offline CRUD, local search & filtering. |
 | **Phase 4** | **Timeline and Calendar** | ⏳ Not Started | Chronological unified timeline, date navigation, calendar view, category/date filters. |
 | **Phase 5** | **Specialized Categories** | ⏳ Not Started | Movies & TV, Books, Music, Memories & Media, Projects, Learning, Places, Goals, Finance, Ideas, People, Custom Categories. |
