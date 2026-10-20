@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --canvas: #090a0f;
+    --surface: #11131a;
+    --surface-elevated: #171a24;
+    --surface-subtle: #141720;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-prominent: rgba(255, 255, 255, 0.16);
+    --accent-purple: #9d74f7;
+    --accent-purple-hover: #b493fa;
+    --accent-purple-glow: rgba(157, 116, 247, 0.18);
+    --text-primary: #f3f4f6;
+    --text-secondary: #9da3b4;
+    --text-muted: #646c7f;
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * {
+    border-color: var(--border-subtle);
+  }
+
+  html, body {
+    background-color: var(--canvas);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    touch-action: manipulation;
+  }
+
+  /* Custom scrollbars for cinematic aesthetic */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
+}
+
+/* Category Accent Utility Classes */
+.category-movies {
+  --cat-color: #f43f5e;
+  --cat-glow: rgba(244, 63, 94, 0.15);
+}
+.category-books {
+  --cat-color: #f59e0b;
+  --cat-glow: rgba(245, 158, 11, 0.15);
+}
+.category-music {
+  --cat-color: #a855f7;
+  --cat-glow: rgba(168, 85, 247, 0.15);
+}
+.category-memories {
+  --cat-color: #06b6d4;
+  --cat-glow: rgba(6, 182, 212, 0.15);
+}
+.category-projects {
+  --cat-color: #3b82f6;
+  --cat-glow: rgba(59, 130, 246, 0.15);
+}
+.category-learning {
+  --cat-color: #10b981;
+  --cat-glow: rgba(16, 185, 129, 0.15);
+}
+.category-places {
+  --cat-color: #14b8a6;
+  --cat-glow: rgba(20, 184, 166, 0.15);
+}
+.category-goals {
+  --cat-color: #ec4899;
+  --cat-glow: rgba(236, 72, 153, 0.15);
+}
+.category-finance {
+  --cat-color: #84cc16;
+  --cat-glow: rgba(132, 204, 22, 0.15);
+}
+.category-ideas {
+  --cat-color: #eab308;
+  --cat-glow: rgba(234, 179, 8, 0.15);
+}
+.category-people {
+  --cat-color: #8b5cf6;
+  --cat-glow: rgba(139, 92, 246, 0.15);
+}
+
+/* Safe area padding utilities */
+.pt-safe {
+  padding-top: max(1rem, env(safe-area-inset-top, 0px));
+}
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
