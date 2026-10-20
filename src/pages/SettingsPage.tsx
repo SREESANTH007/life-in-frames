@@ -1,18 +1,97 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   HardDrive,
   Shield,
   Download,
+  Upload,
   Moon,
   Info,
   CheckCircle2,
+  Database,
+  Trash2,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { SyncStatusBadge } from '../components/ui/SyncStatusBadge'
+import { indexedDbRepository } from '../services/indexedDbRepository'
+import { syncQueueService } from '../services/db/syncQueue'
+import { useEntries } from '../context/useEntries'
 
 export const SettingsPage: React.FC = () => {
+  const { entries } = useEntries()
+  const [storageInfo, setStorageInfo] = useState<{ formattedUsage: string }>({
+    formattedUsage: '< 1 MB',
+  })
+  const [pendingSyncCount, setPendingSyncCount] = useState(0)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importMessage, setImportMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    indexedDbRepository.getStorageEstimate().then((info) => {
+      setStorageInfo({ formattedUsage: info.formattedUsage })
+    })
+    syncQueueService.getPendingCount().then((count) => {
+      setPendingSyncCount(count)
+    })
+  }, [entries])
+
+  // Export JSON backup (PRD Section 18.1)
+  const handleExportArchive = async () => {
+    try {
+      setIsExporting(true)
+      const json = await indexedDbRepository.exportArchive()
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const today = new Date().toISOString().split('T')[0]
+      a.href = url
+      a.download = `life_in_frames_archive_${today}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // Import JSON backup (PRD Section 18.1)
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      setIsImporting(true)
+      setImportMessage(null)
+      const text = await file.text()
+      const res = await indexedDbRepository.importArchive(text)
+      setImportMessage(`Successfully imported ${res.imported} frames (${res.failed} skipped). Refreshing...`)
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Import failed'
+      setImportMessage(`Error: ${msg}`)
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  // Clear archive
+  const handleClearDatabase = async () => {
+    if (
+      window.confirm(
+        'Are you sure you want to completely erase your local database? All local frames will be permanently deleted.'
+      )
+    ) {
+      await indexedDbRepository.clearAll()
+      await syncQueueService.clear()
+      window.location.reload()
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-4xl animate-in fade-in duration-300">
       {/* Header */}
@@ -21,7 +100,7 @@ export const SettingsPage: React.FC = () => {
           Settings & Archive Preferences
         </h1>
         <p className="text-xs sm:text-sm text-[#9da3b4] mt-0.5">
-          Configure local storage, display preferences, privacy, and archive exports.
+          Configure local IndexedDB storage, data portability, privacy, and display preferences.
         </p>
       </div>
 
@@ -31,23 +110,36 @@ export const SettingsPage: React.FC = () => {
           <CardHeader>
             <div className="flex items-center gap-2">
               <HardDrive className="w-4 h-4 text-purple-400" />
-              <CardTitle>Offline & Storage</CardTitle>
+              <CardTitle>Offline & IndexedDB</CardTitle>
             </div>
             <SyncStatusBadge status="offline_only" />
           </CardHeader>
           <CardContent className="space-y-4 text-xs">
             <p className="text-[#9da3b4]">
-              Life in Frames is built offline-first. Your entire record library lives locally in your browser storage.
+              Life in Frames is built offline-first. Your entire record library lives locally in your device's IndexedDB storage.
             </p>
 
             <div className="p-3 rounded-xl bg-[#171a24] border border-white/[0.06] space-y-2">
               <div className="flex justify-between">
-                <span className="text-[#9da3b4]">Local Storage Engine</span>
-                <span className="font-medium text-[#f3f4f6]">IndexedDB</span>
+                <span className="text-[#9da3b4]">Storage Engine</span>
+                <span className="font-medium text-[#f3f4f6] flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-purple-400" />
+                  IndexedDB (Schema v1)
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#9da3b4]">Total Frames Stored</span>
+                <span className="font-medium text-[#f3f4f6]">{entries.length} Records</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#9da3b4]">Offline Sync Queue</span>
+                <span className="font-medium text-purple-300">
+                  {pendingSyncCount} Changes Queued
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[#9da3b4]">Estimated Space Used</span>
-                <span className="font-medium text-[#f3f4f6]">&lt; 1 MB</span>
+                <span className="font-medium text-[#f3f4f6]">{storageInfo.formattedUsage}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[#9da3b4]">Offline Status</span>
@@ -55,6 +147,74 @@ export const SettingsPage: React.FC = () => {
                   <CheckCircle2 className="w-3.5 h-3.5" /> Full Offline Ready
                 </span>
               </div>
+            </div>
+
+            <div className="pt-2">
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleClearDatabase}
+                leftIcon={<Trash2 className="w-4 h-4" />}
+                className="w-full justify-center"
+              >
+                Clear Local Database
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Data Portability (PRD Section 18.1) */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Download className="w-4 h-4 text-indigo-400" />
+              <CardTitle>Data Portability & Backup</CardTitle>
+            </div>
+            <Badge variant="purple" size="sm">JSON v1.0</Badge>
+          </CardHeader>
+          <CardContent className="space-y-4 text-xs">
+            <p className="text-[#9da3b4]">
+              Your archive belongs strictly to you. Export a full, machine-readable JSON backup of your records, or restore an existing backup file.
+            </p>
+
+            {importMessage && (
+              <div className="p-3 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-300">
+                {importMessage}
+              </div>
+            )}
+
+            <div className="space-y-2.5">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleExportArchive}
+                isLoading={isExporting}
+                leftIcon={<Download className="w-4 h-4" />}
+                className="w-full justify-center"
+              >
+                Export JSON Archive
+              </Button>
+
+              <label className="block">
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  onChange={handleImportFile}
+                  disabled={isImporting}
+                  className="hidden"
+                  id="import-archive-input"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => document.getElementById('import-archive-input')?.click()}
+                  isLoading={isImporting}
+                  leftIcon={<Upload className="w-4 h-4" />}
+                  className="w-full justify-center"
+                >
+                  Import JSON Archive
+                </Button>
+              </label>
             </div>
           </CardContent>
         </Card>
@@ -70,7 +230,7 @@ export const SettingsPage: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-4 text-xs">
             <p className="text-[#9da3b4]">
-              Cinematic deep charcoal theme with muted purple accents, optimized for readability and battery efficiency.
+              Cinematic deep charcoal theme with muted purple accents, optimized for readability and OLED battery efficiency.
             </p>
 
             <div className="grid grid-cols-3 gap-2">
@@ -107,31 +267,8 @@ export const SettingsPage: React.FC = () => {
               <li>Zero analytics SDKs or telemetry trackers</li>
               <li>Zero AI summarization or model scraping</li>
               <li>No public feeds, social profiles, or followers</li>
-              <li>Complete data confidentiality and encryption</li>
+              <li>Complete data confidentiality and encryption ready</li>
             </ul>
-          </CardContent>
-        </Card>
-
-        {/* Data Export & Backup */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Download className="w-4 h-4 text-indigo-400" />
-              <CardTitle>Data Portability</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4 text-xs">
-            <p className="text-[#9da3b4]">
-              Your archive belongs strictly to you. Export a full, machine-readable JSON archive of all entries and relationships.
-            </p>
-            <Button
-              variant="secondary"
-              size="sm"
-              leftIcon={<Download className="w-4 h-4" />}
-              className="w-full justify-center"
-            >
-              Export JSON Archive
-            </Button>
           </CardContent>
         </Card>
       </div>
@@ -144,11 +281,11 @@ export const SettingsPage: React.FC = () => {
               <Info className="w-5 h-5" />
             </div>
             <div>
-              <div className="font-semibold text-[#f3f4f6]">Life in Frames v0.1.0</div>
-              <div className="text-[#9da3b4]">Responsive React + Vite + TypeScript web application for Android</div>
+              <div className="font-semibold text-[#f3f4f6]">Life in Frames v0.3.0</div>
+              <div className="text-[#9da3b4]">Phase 3: Local IndexedDB Persistence & Offline Storage Layer</div>
             </div>
           </div>
-          <Badge variant="outline" size="sm">Phase 1 Foundation</Badge>
+          <Badge variant="purple" size="sm">Schema v1 Active</Badge>
         </CardContent>
       </Card>
     </div>
